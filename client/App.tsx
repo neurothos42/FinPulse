@@ -77,7 +77,7 @@ function Content() {
           />
         </View>
       ) : null}
-      {!auth.session && !auth.demo ? (
+      {!auth.session && !auth.demo && !auth.local ? (
         login ? (
           <LoginScreen onBack={() => setLogin(false)} />
         ) : (
@@ -95,8 +95,14 @@ function Content() {
   );
 }
 function SessionApp() {
-  const { session, demo } = useAuth();
-  const scope = session ? `user-${session.user.id}` : demo ? "demo" : undefined;
+  const { session, demo, local } = useAuth();
+  const scope = local
+    ? "local-preview"
+    : session
+      ? `user-${session.user.id}`
+      : demo
+        ? "demo"
+        : undefined;
   return (
     <AppProvider key={scope ?? "guest"} scope={scope} demo={demo}>
       <ThemeProvider>

@@ -14,6 +14,8 @@ type Auth = {
   session: Session | null;
   ready: boolean;
   demo: boolean;
+  local: boolean;
+  enterLocal: () => void;
   error: string | null;
   accept: (session: Session) => Promise<void>;
   signOut: () => Promise<void>;
@@ -24,6 +26,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null),
     [ready, setReady] = useState(false),
     [demo, setDemo] = useState(false),
+    [local, setLocal] = useState(false),
     [error, setError] = useState<string | null>(null);
   useEffect(() => {
     let active = true;
@@ -73,12 +76,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await SecureStore.setItemAsync(KEY, JSON.stringify(value));
     setError(null);
     setDemo(false);
+    setLocal(false);
     setSession(value);
   }
   async function signOut() {
     if (Platform.OS !== "web") await SecureStore.deleteItemAsync(KEY);
     setSession(null);
     setDemo(false);
+    setLocal(false);
     setError(null);
   }
   return (
@@ -87,11 +92,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         session,
         ready,
         demo,
+        local,
+        enterLocal: () => {
+          setSession(null);
+          setDemo(false);
+          setLocal(true);
+          setError(null);
+        },
         error,
         accept,
         signOut,
         exploreDemo: () => {
           setError(null);
+          setSession(null);
+          setLocal(false);
           setDemo(true);
         },
       }}
