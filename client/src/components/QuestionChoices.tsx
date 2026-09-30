@@ -23,6 +23,7 @@ export function QuestionChoices({
             accessibilityRole={multiple ? "checkbox" : "radio"}
             accessibilityLabel={option}
             accessibilityState={{ checked }}
+            aria-checked={checked}
             onPress={() => onSelect(option)}
             style={({ pressed }) => ({
               borderRadius: 16,
