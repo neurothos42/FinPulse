@@ -1,3 +1,9 @@
+import {
+  ageRanges,
+  employments,
+  incomeSources,
+  riskAnswers,
+} from "../data/onboarding";
 import { z } from "zod";
 
 const money = z.number().finite().min(0).max(1e12);
@@ -142,6 +148,11 @@ export const festivalSchema = z.object({
   saved: money,
 });
 export const profileSchema = z.object({
+  ageRange: z.enum(ageRanges).optional(),
+  employment: z.enum(employments).optional(),
+  incomeSources: z.array(z.enum(incomeSources)).max(6).optional(),
+  banks: z.array(z.string().trim().min(1).max(80)).max(30).optional(),
+  riskAnswer: z.enum(riskAnswers.map((a) => a.label)).optional(),
   name: text,
   monthlyIncome: money,
   salaryDay: z.number().int().min(1).max(31),
