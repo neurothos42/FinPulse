@@ -1,0 +1,35 @@
+# ---- Secrets (never commit) ----
+.env
+.env.*
+*.env
+secrets.*
+*.pem
+*.key
+
+# ---- Python ----
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.coverage
+build/
+dist/
+
+# ---- Your financial data (never commit) ----
+uploads/*
+output/*
+!uploads/.gitkeep
+!output/.gitkeep
+store.json
+*.csv
+
+# ---- Editor / OS ----
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
