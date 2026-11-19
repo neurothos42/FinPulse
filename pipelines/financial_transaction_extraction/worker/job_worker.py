@@ -39,6 +39,7 @@ class JobOutcome:
     document_id: object
     user_id: str
     ocr_confidence: Optional[float] = None
+    report: Optional[dict] = None
 
 
 class LeaseHeartbeat(threading.Thread):
@@ -104,6 +105,7 @@ class JobWorker:
         self.storage = GridFsStorage(db, config.gridfs_bucket, config.max_file_bytes)
         self.store = TransactionStore(db)
         self._documents = db["uploaded_documents"]
+        self._reports = db["reports"]
         self._pipeline_factory = pipeline_factory or default_pipeline_factory(config)
         self._confidence_fn = confidence_fn or default_confidence_fn
         self._ml = ml_categorizer
@@ -150,6 +152,7 @@ class JobWorker:
             outcome = self._run_job(job, heartbeat)
             if self.jobs.complete(job_id, outcome.extracted, outcome.duplicates, outcome.partial):
                 self._set_document_status(outcome.document_id, outcome.user_id, "PROCESSED")
+                self._write_report(job, outcome)
                 log(logger, logging.INFO, "job_completed", extracted=outcome.extracted,
                     duplicates=outcome.duplicates, partial=outcome.partial, **fields)
             else:
@@ -198,8 +201,9 @@ class JobWorker:
             except MappingError:
                 mapping_errors += 1
 
+        ml_rows = 0
         if self._ml is not None:
-            apply_ml_categories(mapped, self._ml)
+            ml_rows = apply_ml_categories(mapped, self._ml)
         if ocr_confidence is not None:
             for doc in mapped:
                 doc["ocrConfidence"] = round(ocr_confidence, 1)
@@ -213,8 +217,21 @@ class JobWorker:
 
         if extracted + duplicates == 0:
             raise PermanentJobError("No transactions could be extracted from this document")
+        discarded_by_reason: dict = {}
+        for d in result.discarded:
+            reason = d.get("reason", "unknown")
+            discarded_by_reason[reason] = discarded_by_reason.get(reason, 0) + 1
+        report = {
+            "extracted": extracted, "duplicates": duplicates, "pipelineDuplicates": len(result.duplicates),
+            "databaseDuplicates": summary.duplicates, "discarded": discarded_by_reason,
+            "mappingErrors": mapping_errors,
+            "needsReview": sum(1 for d in mapped if d["needsReview"]),
+            "unknownDirection": sum(1 for d in mapped if d["direction"] == "UNKNOWN"),
+            "ocrConfidence": None if ocr_confidence is None else round(ocr_confidence, 1),
+            "mlModel": getattr(self._ml, "version", None), "mlRowsConsidered": ml_rows,
+        }
         return JobOutcome(extracted, duplicates, partial=(suspect + mapping_errors) > 0,
-                          document_id=document_id, user_id=user_id)
+                          document_id=document_id, user_id=user_id, ocr_confidence=ocr_confidence, report=report)
 
     # ------------------------------------------------------------------ helpers
     def _check_image_quality(self, document: dict, path: Path) -> Optional[float]:
@@ -255,6 +272,20 @@ class JobWorker:
         except Exception as db_exc:
             # The lease will expire and the job will be recovered by claim_next.
             log(logger, logging.ERROR, "job_failure_not_recorded", error_type=type(db_exc).__name__, **fields)
+
+    def _write_report(self, job: dict, outcome: JobOutcome) -> None:
+        """One summary per (user, job): counts and reasons only (no merchants, descriptions or amounts).
+        Best effort: a reporting failure never changes the job's result."""
+        try:
+            now = self._clock()
+            self._reports.update_one(
+                {"userId": outcome.user_id, "jobId": str(job["_id"])},
+                {"$set": {**outcome.report, "documentId": str(outcome.document_id),
+                          "attempt": job.get("attempts"), "partial": outcome.partial, "updatedAt": now},
+                 "$setOnInsert": {"createdAt": now}},
+                upsert=True)
+        except Exception as exc:
+            log(logger, logging.WARNING, "report_not_written", error_type=type(exc).__name__)
 
     def _set_document_status(self, document_id, user_id, status: str) -> None:
         try:

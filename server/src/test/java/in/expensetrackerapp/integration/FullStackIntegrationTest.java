@@ -184,7 +184,7 @@ class FullStackIntegrationTest {
                 });
         assertThat(users).isNotEmpty();
         assertThat(indexNames("uploaded_documents")).contains("userId_createdAt");
-        assertThat(indexNames("processing_jobs")).contains("status_availableAt", "userId_createdAt");
+        assertThat(indexNames("processing_jobs")).contains("status_availableAt", "userId_createdAt", "leaseUntil_idx");
         assertThat(indexNames("transactions")).contains("userId_sourceHash_unique", "userId_date",
                 "userId_category_date", "userId_direction_date", "userId_needsReview");
         assertThat(collection("transactions").listIndexes().into(new ArrayList<>()))

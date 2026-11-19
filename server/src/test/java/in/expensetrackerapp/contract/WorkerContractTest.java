@@ -43,6 +43,8 @@ class WorkerContractTest {
 
     private static final Path FIXTURE = Path.of("..", "pipelines", "financial_transaction_extraction",
             "contracts", "worker_transaction.json");
+    private static final Path MIGRATED_FIXTURE = Path.of("..", "pipelines", "financial_transaction_extraction",
+            "contracts", "migrated_transaction.json");
 
     private static MongoClient client;
     private static MongoConverter converter;
@@ -100,8 +102,26 @@ class WorkerContractTest {
         assertThat(t.getAmount()).isEqualByComparingTo("75.00");
         assertThat(t.getBalance()).isNull();
         assertThat(t.getMerchant()).isNull();
-        assertThat(t.getPossibleDuplicateOf()).isEqualTo("a".repeat(64));
         assertThat(t.getSourceHash()).isEqualTo("b".repeat(64));
+
+        assertThat(t.getPossibleDuplicateOf()).isEqualTo("a".repeat(64));
+    }
+
+    @Test
+    void aRowCopiedFromTheLegacyDatabaseDeserialisesWithNoDocumentAndItsOriginalTimestamp() throws IOException {
+        Document migrated = Document.parse(Files.readString(MIGRATED_FIXTURE))
+                .getList("transactions", Document.class).get(0);
+        assertThat(migrated.keySet()).contains("legacy"); // traceability field Java does not declare
+
+        Transaction t = converter.read(Transaction.class, migrated);
+
+        assertThat(t.getDocumentId()).isNull();
+        assertThat(t.getJobId()).isEqualTo("migration-20261114T100000Z");
+        assertThat(t.getSourceHash()).isEqualTo("c".repeat(64));
+        assertThat(t.getAmount()).isEqualByComparingTo("450.00");
+        assertThat(t.getDirection()).isEqualTo(TransactionDirection.DEBIT);
+        assertThat(t.getCategory()).isEqualTo("Food");
+        assertThat(t.getCreatedAt()).isEqualTo(Instant.parse("2025-12-01T08:30:00Z"));
     }
 
     @Test

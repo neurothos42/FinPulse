@@ -40,3 +40,6 @@ models/
 corrections*.csv
 exported_labels*.csv
 !categorization/data/seed_dataset.csv
+backups/
+migration-report*.json
+inspect-report*.json

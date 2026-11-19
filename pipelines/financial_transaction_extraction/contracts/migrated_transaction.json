@@ -1,0 +1,40 @@
+{
+  "transactions": [
+    {
+      "_id": {
+        "$oid": "507f1f77bcf86cd799439020"
+      },
+      "amount": {
+        "$numberDecimal": "450.00"
+      },
+      "balance": {
+        "$numberDecimal": "10000.50"
+      },
+      "category": "Food",
+      "createdAt": {
+        "$date": "2025-12-01T08:30:00Z"
+      },
+      "currency": "INR",
+      "date": "2026-10-03",
+      "description": "UPI/DR/427619384729/SWIGGY",
+      "direction": "DEBIT",
+      "documentId": null,
+      "jobId": "migration-20261114T100000Z",
+      "legacy": {
+        "db": "finplus",
+        "id": "507f1f77bcf86cd799439021",
+        "runId": "20261114T100000Z"
+      },
+      "merchant": "Swiggy",
+      "needsReview": false,
+      "pipelineCategory": "Food & Dining",
+      "referenceNumber": "427619384729",
+      "source": "statement.pdf",
+      "sourceHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "updatedAt": {
+        "$date": "2025-12-01T08:30:00Z"
+      },
+      "userId": "contract-user"
+    }
+  ]
+}
