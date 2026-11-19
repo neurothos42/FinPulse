@@ -19,7 +19,11 @@ from transaction_pipeline import Transaction  # noqa: E402
 from worker.transaction_mapper import map_transaction  # noqa: E402
 
 TARGET = ROOT / "contracts" / "worker_transaction.json"
+MIGRATED_TARGET = ROOT / "contracts" / "migrated_transaction.json"
 NOW = datetime(2026, 1, 1, 12, 0, tzinfo=timezone.utc)
+
+# Fields only the legacy migration adds (traceability back to the old row). Java must simply ignore them.
+MIGRATION_ONLY_FIELDS = ("legacy",)
 
 # Fields the worker may add that the Java entity does not declare. Java must simply ignore them.
 WORKER_ONLY_FIELDS = ("categorySource", "categoryConfidence", "ocrConfidence")
@@ -48,10 +52,29 @@ def render() -> str:
                            indent=2, sort_keys=True) + "\n"
 
 
+def build_migrated_document() -> dict:
+    """A legacy finplus.transactions row converted by the REAL migration code path."""
+    from migration.migrate import legacy_to_canonical
+    legacy = {"_id": ObjectId("507f1f77bcf86cd799439021"), "date": "2026-10-03", "amount": -450.0, "currency": "INR",
+              "direction": "debit", "merchant": "Swiggy", "category": "Food & Dining",
+              "description": "UPI/DR/427619384729/SWIGGY", "source": "statement.pdf", "ref_no": "427619384729",
+              "balance": 10000.5, "needs_review": False, "hash": "c" * 64, "user_id": "contract-user",
+              "saved_at": datetime(2025, 12, 1, 8, 30, tzinfo=timezone.utc)}
+    doc = legacy_to_canonical(legacy, owner="contract-user", run_id="20261114T100000Z", legacy_db="finplus", now=NOW)
+    doc["_id"] = ObjectId("507f1f77bcf86cd799439020")
+    return doc
+
+
+def render_migrated() -> str:
+    return json_util.dumps({"transactions": [build_migrated_document()]},
+                           json_options=json_util.RELAXED_JSON_OPTIONS, indent=2, sort_keys=True) + "\n"
+
+
 def main() -> int:
     TARGET.parent.mkdir(exist_ok=True)
     TARGET.write_text(render(), encoding="utf-8")
-    print(f"wrote {TARGET}")
+    MIGRATED_TARGET.write_text(render_migrated(), encoding="utf-8")
+    print(f"wrote {TARGET}\nwrote {MIGRATED_TARGET}")
     return 0
 
 

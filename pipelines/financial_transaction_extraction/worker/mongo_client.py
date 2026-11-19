@@ -22,6 +22,11 @@ TRANSACTION_INDEXES = [
 ]
 
 
+REPORT_INDEXES = [
+    ("userId_jobId", [("userId", ASCENDING), ("jobId", ASCENDING)], {"unique": True}),
+]
+
+
 def create_client(config: WorkerConfig) -> MongoClient:
     # tz_aware: all timestamps are timezone-aware UTC datetimes (BSON dates are always UTC).
     return MongoClient(
@@ -38,7 +43,10 @@ def get_database(client: MongoClient, config: WorkerConfig) -> Database:
 
 
 def ensure_indexes(db: Database) -> None:
-    """Idempotent. Only the transactions collection is managed here; the Java service owns the rest."""
+    """Idempotent. The worker manages transactions and reports; the Java service owns the other collections."""
     for name, keys, options in TRANSACTION_INDEXES:
         db["transactions"].create_index(keys, name=name, **options)
-    log(logger, logging.INFO, "indexes_ensured", collection="transactions", count=len(TRANSACTION_INDEXES))
+    for name, keys, options in REPORT_INDEXES:
+        db["reports"].create_index(keys, name=name, **options)
+    log(logger, logging.INFO, "indexes_ensured", collections="transactions,reports",
+        count=len(TRANSACTION_INDEXES) + len(REPORT_INDEXES))

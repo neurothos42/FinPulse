@@ -1,0 +1,26 @@
+{
+  "_comment": "Every index FinPulse needs, per collection. Source of truth for migration/indexes.py (inspect/apply). Java declares users/uploaded_documents/processing_jobs/transactions through annotations; the Python worker creates transactions + reports. tests/test_java_contract.py checks the Java annotations against this file; tests/test_index_contract.py checks the worker's lists. Matching is by key pattern + uniqueness: an existing index with the same keys but another NAME is accepted as equivalent (Spring names a single-field @Indexed after the field).",
+  "collections": {
+    "users": [
+      {"name": "email", "keys": [["email", 1]], "unique": true}
+    ],
+    "uploaded_documents": [
+      {"name": "userId_createdAt", "keys": [["userId", 1], ["createdAt", -1]], "unique": false}
+    ],
+    "processing_jobs": [
+      {"name": "status_availableAt", "keys": [["status", 1], ["availableAt", 1]], "unique": false},
+      {"name": "userId_createdAt", "keys": [["userId", 1], ["createdAt", -1]], "unique": false},
+      {"name": "leaseUntil_idx", "keys": [["leaseUntil", 1]], "unique": false}
+    ],
+    "transactions": [
+      {"name": "userId_sourceHash_unique", "keys": [["userId", 1], ["sourceHash", 1]], "unique": true},
+      {"name": "userId_date", "keys": [["userId", 1], ["date", -1]], "unique": false},
+      {"name": "userId_category_date", "keys": [["userId", 1], ["category", 1], ["date", -1]], "unique": false},
+      {"name": "userId_direction_date", "keys": [["userId", 1], ["direction", 1], ["date", -1]], "unique": false},
+      {"name": "userId_needsReview", "keys": [["userId", 1], ["needsReview", 1]], "unique": false}
+    ],
+    "reports": [
+      {"name": "userId_jobId", "keys": [["userId", 1], ["jobId", 1]], "unique": true}
+    ]
+  }
+}
