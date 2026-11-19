@@ -6,82 +6,145 @@ import {
   Button,
   ErrorText,
   Note,
-  Progress,
 } from "../components/ui";
 import { useAuth } from "../store/AuthProvider";
+import { register, signIn } from "../services/auth";
 
 export function LoginScreen({ onBack }: { onBack: () => void }) {
   const auth = useAuth();
-  const [step, setStep] = useState(0);
+  const [mode, setMode] = useState<"login" | "register">("login");
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  function next() {
-    if (!(step === 0 ? email.trim() : password.trim())) {
+  const [loading, setLoading] = useState(false);
+
+  async function submit() {
+    setError(null);
+    const normalizedEmail = email.trim();
+    if (mode === "register" && name.trim().length < 2) {
+      setError("Enter your name (at least 2 characters).");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      setError("Enter a valid email address.");
+      return;
+    }
+    if (password.length < (mode === "register" ? 8 : 1)) {
       setError(
-        step === 0
-          ? "Enter any email to continue."
-          : "Enter any password to continue.",
+        mode === "register"
+          ? "Password must be at least 8 characters."
+          : "Enter your password.",
       );
       return;
     }
-    setError(null);
-    if (step === 0) {
-      setStep(1);
-      return;
+
+    setLoading(true);
+    try {
+      if (mode === "register") {
+        await register(name, normalizedEmail, password);
+      }
+      const session = await signIn(normalizedEmail, password);
+      await auth.accept(session);
+    } catch (e) {
+      setError(
+        e instanceof Error
+          ? e.message
+          : "Something went wrong. Please try again.",
+      );
+    } finally {
+      setLoading(false);
     }
-    setPassword("");
-    auth.enterLocal();
   }
+
   return (
-    <Screen tab key={step}>
+    <Screen tab>
       <T bold size={13} style={{ letterSpacing: 3, marginVertical: 24 }}>
         FINPULSE
       </T>
-      <Progress value={(step + 1) * 50} />
-      <T size={32} bold style={{ marginVertical: 24 }}>
-        {step === 0 ? "What’s your email?" : "Enter any password."}
+      <T size={32} bold style={{ marginBottom: 8 }}>
+        {mode === "login" ? "Welcome back." : "Create your account."}
+      </T>
+      <T muted style={{ marginBottom: 16 }}>
+        {mode === "login"
+          ? "Sign in to continue to your financial dashboard."
+          : "Your account keeps your FinPulse profile and records separate."}
       </T>
       <Note>
-        Static login for trying the app. Any email and password work. These
-        entries are not verified or saved. This device uses one shared local
-        preview profile.
+        {mode === "login"
+          ? "Use the email and password associated with your FinPulse account."
+          : "Use a valid email and a password with at least 8 characters."}
       </Note>
-      {step === 0 ? (
+      {mode === "register" ? (
         <Field
-          label="Email"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
+          label="Name"
+          value={name}
+          onChangeText={setName}
+          autoCapitalize="words"
           autoCorrect={false}
-          onSubmitEditing={next}
+          autoComplete="name"
+          maxLength={50}
+          editable={!loading}
+          returnKeyType="next"
         />
-      ) : (
-        <Field
-          label="Password"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          autoCapitalize="none"
-          autoCorrect={false}
-          onSubmitEditing={next}
-        />
-      )}
+      ) : null}
+      <Field
+        label="Email"
+        value={email}
+        onChangeText={setEmail}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        autoCorrect={false}
+        autoComplete="email"
+        editable={!loading}
+        returnKeyType="next"
+      />
+      <Field
+        label="Password"
+        value={password}
+        onChangeText={setPassword}
+        secureTextEntry
+        autoCapitalize="none"
+        autoCorrect={false}
+        autoComplete={mode === "login" ? "current-password" : "new-password"}
+        editable={!loading}
+        onSubmitEditing={() => void submit()}
+        returnKeyType="go"
+      />
       <ErrorText message={error} />
       <Button
-        title={step === 0 ? "Continue" : "Continue to setup"}
-        onPress={next}
+        title={
+          loading
+            ? mode === "login"
+              ? "Signing in…"
+              : "Creating account…"
+            : mode === "login"
+              ? "Sign in"
+              : "Create account"
+        }
+        onPress={() => void submit()}
+        disabled={loading}
       />
       <Button
-        title={step === 0 ? "Back to welcome" : "Back"}
+        title={
+          mode === "login"
+            ? "New to FinPulse? Create an account"
+            : "Already have an account? Sign in"
+        }
         variant="secondary"
         style={{ marginTop: 12 }}
+        disabled={loading}
         onPress={() => {
+          setMode(mode === "login" ? "register" : "login");
           setError(null);
-          if (step) setStep(0);
-          else onBack();
         }}
+      />
+      <Button
+        title="Back to welcome"
+        variant="secondary"
+        style={{ marginTop: 12 }}
+        disabled={loading}
+        onPress={onBack}
       />
     </Screen>
   );

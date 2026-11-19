@@ -35,8 +35,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const raw =
           Platform.OS === "web" ? null : await SecureStore.getItemAsync(KEY);
         const parsed = raw ? sessionSchema.safeParse(JSON.parse(raw)) : null;
-        if (active && parsed?.success && parsed.data.expiresAt > Date.now())
-          setSession(parsed.data);
+        if (active && parsed?.success) {
+          if (parsed.data.expiresAt <= Date.now()) {
+            if (Platform.OS !== "web")
+              await SecureStore.deleteItemAsync(KEY);
+          } else {
+            try {
+              const { getCurrentUser } = await import("../services/auth");
+              const user = await getCurrentUser(parsed.data.accessToken);
+              if (!active) return;
+              if (user) {
+                setSession({ ...parsed.data, user });
+              } else {
+                if (Platform.OS !== "web")
+                  await SecureStore.deleteItemAsync(KEY);
+                setError("Your session is no longer valid. Please sign in again.");
+              }
+            } catch {
+              // Keep the encrypted local session available for offline use.
+              if (active) {
+                setSession(parsed.data);
+                setError("Could not verify your session. Some online features may be unavailable.");
+              }
+            }
+          }
+        }
       } catch {
         if (active)
           setError(

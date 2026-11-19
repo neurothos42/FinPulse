@@ -65,6 +65,13 @@ function Content() {
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
       <StatusBar style={c.dark ? "light" : "dark"} />
+      {auth.error ? (
+        <View style={{ padding: 12, backgroundColor: c.redBg }}>
+          <T size={12} style={{ color: c.red }}>
+            {auth.error}
+          </T>
+        </View>
+      ) : null}
       {error ? (
         <View style={{ padding: 12, backgroundColor: c.redBg }}>
           <T size={12} style={{ color: c.red }}>

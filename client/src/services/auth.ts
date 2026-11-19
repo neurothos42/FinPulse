@@ -15,6 +15,7 @@ export const sessionSchema = z.object({
   }),
 });
 export type Session = z.infer<typeof sessionSchema>;
+const userSchema = sessionSchema.shape.user;
 const loginResponse = z.object({
   accessToken: z.string().min(1),
   expiresIn: z.number().positive(),
@@ -78,6 +79,41 @@ export async function signIn(
     expiresAt: Date.now() + parsed.data.expiresIn * 1000,
   };
 }
+export async function getCurrentUser(accessToken: string) {
+  if (!authApiUrl) throw new Error("The sign-in server is not configured.");
+  const url = new URL(authApiUrl);
+  if (
+    url.protocol !== "https:" &&
+    !(typeof __DEV__ !== "undefined" && __DEV__ && url.protocol === "http:")
+  )
+    throw new Error("Sign-in requires a secure HTTPS server.");
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15000);
+  try {
+    const response = await fetch(`${authApiUrl}/api/users/me`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      signal: controller.signal,
+    });
+    if (response.status === 401 || response.status === 403) return null;
+    if (!response.ok)
+      throw new Error("Could not verify your session with the server.");
+    const parsed = userSchema.safeParse(await response.json());
+    if (!parsed.success)
+      throw new Error("The server returned an unexpected user profile.");
+    return parsed.data;
+  } catch (e) {
+    if (
+      e instanceof Error &&
+      (e.name === "AbortError" || e instanceof TypeError)
+    )
+      throw new Error("Could not reach the sign-in server.");
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function register(name: string, email: string, password: string) {
   await request("register", {
     name: name.trim(),
