@@ -5,10 +5,10 @@ from transaction_pipeline import PipelineResult
 from worker.config import ConfigError, WorkerConfig
 from worker.job_worker import JobWorker
 from worker.mongo_client import ensure_indexes
-from worker_helpers import insert_job, put_document
+from worker_helpers import VALID_PDF, VALID_PNG, insert_job, put_document
 from test_worker import FakePipeline, doc_status, job_of, make_txn
 
-PNG = b"\x89PNG\r\n\x1a\n" + b"x" * 64
+PNG = VALID_PNG
 
 
 def image_job(db, config, clock, confidence, pipeline=None, ml=None, filename="bill.png"):
@@ -64,7 +64,7 @@ def test_unreadable_images_fail_permanently_before_the_pipeline_runs(db, config,
 
 def test_pdfs_are_never_confidence_gated(db, config, clock):
     ensure_indexes(db)
-    doc_id, file_id = put_document(db, "user-1", b"%PDF-1.4 x")
+    doc_id, file_id = put_document(db, "user-1", VALID_PDF)
     insert_job(db, user_id="user-1", document_id=doc_id, gridfs_file_id=file_id)
     calls = []
     worker = JobWorker(config, db, lambda: FakePipeline([make_txn()]), clock,
@@ -83,7 +83,7 @@ def test_thresholds_can_be_disabled(db, make_config, clock):
 def test_ml_fills_only_uncategorised_rows_when_enabled(db, config, clock):
     from test_categorization_ml import FakeML
     ensure_indexes(db)
-    doc_id, file_id = put_document(db, "user-1", b"%PDF-1.4 x")
+    doc_id, file_id = put_document(db, "user-1", VALID_PDF)
     insert_job(db, user_id="user-1", document_id=doc_id, gridfs_file_id=file_id)
     rows = [make_txn("a", category="Uncategorized"), make_txn("b", category="Groceries")]
     JobWorker(config, db, lambda: FakePipeline(rows), clock, ml_categorizer=FakeML("ml")).process_one()
@@ -95,7 +95,7 @@ def test_ml_fills_only_uncategorised_rows_when_enabled(db, config, clock):
 
 def test_without_an_ml_categorizer_nothing_changes(db, config, clock):
     ensure_indexes(db)
-    doc_id, file_id = put_document(db, "user-1", b"%PDF-1.4 x")
+    doc_id, file_id = put_document(db, "user-1", VALID_PDF)
     insert_job(db, user_id="user-1", document_id=doc_id, gridfs_file_id=file_id)
     JobWorker(config, db, lambda: FakePipeline([make_txn(category="Uncategorized")]), clock).process_one()
 

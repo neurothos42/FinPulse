@@ -68,6 +68,9 @@ class WorkerConfig:
     ensure_indexes: bool = True
     health_file: Optional[str] = None
     enable_llm_categorizer: bool = False
+    # Limits on untrusted uploads (checked before any OCR/parsing; exceeding one fails the job permanently).
+    max_image_pixels: int = 40_000_000
+    max_pdf_pages: int = 100
     # OCR quality gate for uploaded IMAGES (0 disables). Provisional values from a small synthetic
     # measurement: ~92 clean, ~50 heavily blurred, ~12-21 heavy noise. Recalibrate on real uploads.
     ocr_min_confidence: float = 40.0        # below this (or no text at all): reject, image too unclear
@@ -112,6 +115,8 @@ class WorkerConfig:
             ensure_indexes=_flag(env, "ENSURE_INDEXES", True),
             health_file=(env.get("HEALTH_FILE") or None),
             enable_llm_categorizer=_flag(env, "ENABLE_LLM_CATEGORIZER", False),
+            max_image_pixels=int(_positive_float(env, "MAX_IMAGE_PIXELS", 40_000_000)),
+            max_pdf_pages=int(_positive_float(env, "MAX_PDF_PAGES", 100)),
             ocr_min_confidence=_non_negative_float(env, "OCR_MIN_CONFIDENCE", 40.0),
             ocr_review_confidence=_non_negative_float(env, "OCR_REVIEW_CONFIDENCE", 75.0),
             enable_ml_categorizer=_flag(env, "ENABLE_ML_CATEGORIZER", False),

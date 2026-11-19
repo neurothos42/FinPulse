@@ -11,7 +11,7 @@ from worker.job_manager import JobManager
 from worker.job_worker import JobWorker, default_pipeline_factory, temp_filename
 from worker.errors import PermanentJobError
 from worker.mongo_client import ensure_indexes
-from worker_helpers import insert_job, put_document
+from worker_helpers import VALID_PDF, insert_job, put_document
 
 SAMPLE_PDF = Path(__file__).resolve().parents[1] / "samples" / "statement.pdf"
 
@@ -41,7 +41,7 @@ class FakePipeline:
 def setup(db, config, clock):
     ensure_indexes(db)
 
-    def build(pipeline=None, cfg=None, user="user-1", content=b"%PDF-1.4 x", **doc_kwargs):
+    def build(pipeline=None, cfg=None, user="user-1", content=VALID_PDF, **doc_kwargs):
         doc_id, file_id = put_document(db, user, content, **doc_kwargs)
         job_id = insert_job(db, user_id=user, document_id=doc_id, gridfs_file_id=file_id)
         worker = JobWorker(cfg or config, db, (lambda: pipeline) if pipeline else None, clock)
@@ -202,7 +202,7 @@ def test_document_record_of_another_user_is_never_processed(db, config, clock):
     """The GridFS file's metadata deliberately matches the job's user, so ONLY the document-level
     ownership check can stop this (defence in depth: each layer is tested on its own)."""
     ensure_indexes(db)
-    doc_id, file_id = put_document(db, "user-2", b"%PDF-1.4 x", file_owner="user-1")
+    doc_id, file_id = put_document(db, "user-2", VALID_PDF, file_owner="user-1")
     job_id = insert_job(db, user_id="user-1", document_id=doc_id, gridfs_file_id=file_id)
     pipeline = FakePipeline([make_txn()])
     JobWorker(config, db, lambda: pipeline, clock).process_one()
@@ -226,8 +226,8 @@ def test_gridfs_file_owned_by_someone_else_is_refused(db, setup):
 
 def test_mismatched_file_reference_is_refused(db, config, clock):
     ensure_indexes(db)
-    doc_id, _ = put_document(db, "user-1", b"%PDF-1.4 x")
-    _, other_file = put_document(db, "user-1", b"%PDF-1.4 y")
+    doc_id, _ = put_document(db, "user-1", VALID_PDF)
+    _, other_file = put_document(db, "user-1", VALID_PDF)
     job_id = insert_job(db, user_id="user-1", document_id=doc_id, gridfs_file_id=other_file)
     JobWorker(config, db, lambda: FakePipeline([make_txn()]), clock).process_one()
     assert "does not match" in job_of(db, job_id)["errorMessage"]
@@ -288,7 +288,7 @@ def test_temp_filename_rules():
 # ---------------------------------------------------------------- crash recovery, lease loss, loop
 def test_job_abandoned_by_a_crashed_worker_is_recovered_by_another(db, make_config, clock):
     ensure_indexes(db)
-    doc_id, file_id = put_document(db, "user-1", b"%PDF-1.4 x")
+    doc_id, file_id = put_document(db, "user-1", VALID_PDF)
     job_id = insert_job(db, user_id="user-1", document_id=doc_id, gridfs_file_id=file_id)
     crashed = JobManager(db, make_config(worker_id="worker-crashed"), clock)
     assert crashed.claim_next() is not None                    # claims, then the process dies

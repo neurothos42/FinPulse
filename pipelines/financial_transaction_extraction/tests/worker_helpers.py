@@ -4,6 +4,30 @@ from datetime import datetime, timedelta, timezone
 import gridfs
 from bson import ObjectId
 
+def _minimal_pdf() -> bytes:
+    import io
+    from reportlab.pdfgen import canvas
+    buffer = io.BytesIO()
+    page = canvas.Canvas(buffer, invariant=True)
+    page.drawString(72, 720, "test document")
+    page.showPage()
+    page.save()
+    return buffer.getvalue()
+
+
+def _minimal_png() -> bytes:
+    import io
+    from PIL import Image
+    buffer = io.BytesIO()
+    Image.new("RGB", (40, 40), "white").save(buffer, "PNG")
+    return buffer.getvalue()
+
+
+# Genuine (tiny) files. The worker now rejects unreadable/hostile uploads before parsing, so worker-level tests
+# must not use placeholder bytes such as b"%PDF-1.4 x" as "the PDF".
+VALID_PDF = _minimal_pdf()
+VALID_PNG = _minimal_png()
+
 START = datetime(2026, 1, 1, tzinfo=timezone.utc)
 
 

@@ -16,6 +16,7 @@ from pymongo.database import Database
 from .config import WorkerConfig
 from .errors import LeaseLostError, MappingError, PermanentJobError
 from .gridfs_storage import GridFsStorage, parse_object_id
+from .input_guard import check_document
 from .job_manager import FAILED, NOT_OWNER, RETRY_SCHEDULED, JobManager, utcnow
 from .logging_utils import log
 from .ml_adapter import apply_ml_categories
@@ -188,6 +189,8 @@ class JobWorker:
         with tempfile.TemporaryDirectory(prefix="finpulse-", dir=self.config.temp_directory) as tmp:
             path = self.storage.download(document["gridFsFileId"], user_id, Path(tmp), filename)
             self._ensure_lease(heartbeat)
+            check_document(path, document.get("contentType", ""), max_image_pixels=self.config.max_image_pixels,
+                           max_pdf_pages=self.config.max_pdf_pages)
             ocr_confidence = self._check_image_quality(document, path)
             result = self._pipeline_factory().process_file(str(path))
             self._ensure_lease(heartbeat)
