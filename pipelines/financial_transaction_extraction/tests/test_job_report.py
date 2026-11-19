@@ -1,7 +1,7 @@
 import json
 
 from worker.mongo_client import ensure_indexes
-from worker_helpers import insert_job, put_document
+from worker_helpers import VALID_PDF, VALID_PNG, insert_job, put_document
 from test_worker import FakePipeline, SAMPLE_PDF, make_txn
 from worker.job_worker import JobWorker
 
@@ -61,7 +61,7 @@ def test_failed_jobs_write_no_report(db, config, clock):
 
 def test_a_reporting_failure_never_changes_the_job_result(db, config, clock, monkeypatch):
     ensure_indexes(db)
-    doc_id, file_id = put_document(db, "user-1", b"%PDF-1.4 x")
+    doc_id, file_id = put_document(db, "user-1", VALID_PDF)
     job_id = insert_job(db, user_id="user-1", document_id=doc_id, gridfs_file_id=file_id)
     worker = JobWorker(config, db, lambda: FakePipeline([make_txn()]), clock)
 
@@ -85,7 +85,7 @@ def test_report_records_image_confidence_ml_usage_and_flagged_rows(db, config, c
 
     pipeline = FakePipeline([make_txn("a", category="Uncategorized"), make_txn("b", direction="unknown", needs_review=True)],
                             discarded=[{"reason": "no_amount", "text": "t", "source": "s"}])
-    job_id, _ = run_sample(db, config, clock, ml=FakeML(), pipeline=pipeline, content=b"\x89PNG\r\n\x1a\n" + b"x" * 40,
+    job_id, _ = run_sample(db, config, clock, ml=FakeML(), pipeline=pipeline, content=VALID_PNG,
                            content_type="image/png", confidence_fn=lambda path: 60.0)
 
     report = db["reports"].find_one({"jobId": str(job_id)})

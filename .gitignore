@@ -49,3 +49,9 @@ Thumbs.db
 # ================================
 *.tmp
 *.temp
+*.pem
+*.key
+*.p12
+*.jks
+credentials*.json
+service-account*.json

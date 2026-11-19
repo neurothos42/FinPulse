@@ -1,0 +1,19 @@
+{
+  "_comment": "Least-privilege MongoDB roles for FinPulse. tests/test_least_privilege.py creates the worker role from this file on an auth-enabled MongoDB and proves the worker runs with exactly these privileges and is denied everything else. Collections are in the application database (finpulse). In Atlas: Database Access > Custom Roles > add these actions per collection (Atlas spells them FIND, INSERT, UPDATE, REMOVE, CREATE_INDEX).",
+  "roles": {
+    "finpulse_worker": {
+      "description": "Python worker. Claims and updates jobs, reads documents and GridFS files, inserts transactions and reports. Cannot read users, delete anything, create jobs, write files or change indexes (run the worker with ENSURE_INDEXES=false; the Spring Boot service creates the indexes at startup).",
+      "privileges": [
+        {"collections": ["processing_jobs"], "actions": ["find", "update"]},
+        {"collections": ["uploaded_documents"], "actions": ["find", "update"]},
+        {"collections": ["transactions"], "actions": ["find", "insert"]},
+        {"collections": ["reports"], "actions": ["find", "insert", "update"]},
+        {"collections": ["fs.files", "fs.chunks"], "actions": ["find"]}
+      ]
+    },
+    "finpulse_api": {
+      "description": "Spring Boot API. The built-in readWrite role on the application database covers users, uploaded_documents, processing_jobs, transactions, GridFS (fs.*) and the index creation Spring Data performs at startup. Do not grant dbAdmin/clusterAdmin or any access to other databases.",
+      "builtin": {"role": "readWrite", "database": "finpulse"}
+    }
+  }
+}
