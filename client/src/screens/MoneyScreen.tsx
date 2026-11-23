@@ -166,6 +166,12 @@ export function MoneyScreen() {
               style={{ flex: 1 }}
             />
           </Row>
+          <Button
+            title="Statements & receipts"
+            variant="secondary"
+            style={{ marginTop: 10 }}
+            onPress={() => nav.navigate("Documents")}
+          />
           <Section
             title={`${rows.length} transactions`}
             action="Analytics"
