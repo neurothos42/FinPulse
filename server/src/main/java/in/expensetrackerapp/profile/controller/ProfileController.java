@@ -1,20 +1,19 @@
-
 package in.expensetrackerapp.profile.controller;
 
 import in.expensetrackerapp.profile.dto.ProfileRequest;
 import in.expensetrackerapp.profile.dto.ProfileResponse;
 import in.expensetrackerapp.profile.service.ProfileService;
-
 import jakarta.validation.Valid;
-
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import java.security.Principal;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/profiles")
+@RequestMapping("/api/profile")
 public class ProfileController {
 
     private final ProfileService profileService;
@@ -23,43 +22,13 @@ public class ProfileController {
         this.profileService = profileService;
     }
 
-    // CREATE PROFILE
-    @PostMapping
-    public ResponseEntity<ProfileResponse> createProfile(
-            Principal principal,
-            @Valid @RequestBody ProfileRequest request) {
-
-        ProfileResponse response = profileService.createProfile(
-                principal.getName(),
-                request
-        );
-
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    @GetMapping
+    public ResponseEntity<ProfileResponse> get(Authentication authentication) {
+        return ResponseEntity.ok(profileService.get(authentication.getName()));
     }
 
-    // GET LOGGED-IN USER PROFILE
-    @GetMapping("/me")
-    public ResponseEntity<ProfileResponse> getProfile(
-            Principal principal) {
-
-        ProfileResponse response = profileService.getProfile(
-                principal.getName()
-        );
-
-        return ResponseEntity.ok(response);
-    }
-
-    // UPDATE PROFILE
-    @PutMapping("/me")
-    public ResponseEntity<ProfileResponse> updateProfile(
-            Principal principal,
-            @Valid @RequestBody ProfileRequest request) {
-
-        ProfileResponse response = profileService.updateProfile(
-                principal.getName(),
-                request
-        );
-
-        return ResponseEntity.ok(response);
+    @PutMapping
+    public ResponseEntity<ProfileResponse> put(Authentication authentication, @Valid @RequestBody ProfileRequest request) {
+        return ResponseEntity.ok(profileService.put(authentication.getName(), request));
     }
 }

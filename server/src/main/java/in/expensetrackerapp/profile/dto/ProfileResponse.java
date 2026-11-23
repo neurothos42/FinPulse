@@ -1,44 +1,19 @@
-
 package in.expensetrackerapp.profile.dto;
 
-import in.expensetrackerapp.profile.model.Profile;
+import in.expensetrackerapp.profile.model.UserProfile;
 
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
 public record ProfileResponse(
+        String ageRange, String employment, List<String> incomeSources, List<String> banks, String riskAnswer,
+        String risk, BigDecimal monthlyIncome, int salaryDay, BigDecimal sipTarget, BigDecimal savingsTarget,
+        Map<String, Double> allocation, boolean darkMode, boolean onboarded, List<String> readNotifications) {
 
-        String id,
-        String fullName,
-        Integer age,
-        String employment,
-        BigDecimal expectedMonthlyIncome,
-        List<String> incomeSources,
-        List<String> banks,
-        Map<String, BigDecimal> openingBalances,
-        BigDecimal monthlyInvestmentTarget,
-        String riskTolerance,
-        Instant createdAt,
-        Instant updatedAt
-
-) {
-
-    public static ProfileResponse fromProfile(Profile profile) {
-        return new ProfileResponse(
-                profile.getId(),
-                profile.getFullName(),
-                profile.getAge(),
-                profile.getEmployment(),
-                profile.getExpectedMonthlyIncome(),
-                profile.getIncomeSources(),
-                profile.getBanks(),
-                profile.getOpeningBalances(),
-                profile.getMonthlyInvestmentTarget(),
-                profile.getRiskTolerance(),
-                profile.getCreatedAt(),
-                profile.getUpdatedAt()
-        );
+    public static ProfileResponse from(UserProfile p) {
+        return new ProfileResponse(p.getAgeRange(), p.getEmployment(), p.getIncomeSources(), p.getBanks(),
+                p.getRiskAnswer(), p.getRisk(), p.getMonthlyIncome(), p.getSalaryDay(), p.getSipTarget(),
+                p.getSavingsTarget(), p.getAllocation(), p.isDarkMode(), p.isOnboarded(), p.getReadNotifications());
     }
 }
