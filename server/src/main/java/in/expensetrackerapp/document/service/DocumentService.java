@@ -10,7 +10,16 @@ import in.expensetrackerapp.document.model.DocumentStatus;
 import in.expensetrackerapp.document.model.DocumentType;
 import in.expensetrackerapp.document.model.UploadedDocument;
 import in.expensetrackerapp.document.repository.DocumentRepository;
+import in.expensetrackerapp.document.dto.DocumentPageResponse;
+import in.expensetrackerapp.job.model.JobStatus;
 import in.expensetrackerapp.job.model.ProcessingJob;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 import in.expensetrackerapp.job.service.JobService;
 import org.bson.types.ObjectId;
 import org.slf4j.Logger;
@@ -44,6 +53,10 @@ public class DocumentService {
     private final GridFsStorageService storageService;
     private final JobService jobService;
     private final long maxFileSizeBytes;
+
+    /** Optional (field-injected so the original constructor stays unchanged); null in plain unit tests. */
+    @Autowired(required = false)
+    private MongoTemplate mongoTemplate;
 
     public DocumentService(
             DocumentRepository documentRepository,
@@ -120,14 +133,40 @@ public class DocumentService {
     public List<DocumentResponse> list(String userId, int page, int size) {
         int safePage = Math.max(page, 0);
         int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
-        return documentRepository
+        List<UploadedDocument> docs = documentRepository
                 .findByUserId(userId, PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.DESC, "createdAt")))
-                .map(DocumentResponse::fromDocument)
                 .getContent();
+        return enrich(userId, docs);
+    }
+
+    /** Same data as list() inside a page envelope with totals (M4). */
+    public DocumentPageResponse listPage(String userId, int page, int size) {
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
+        var result = documentRepository.findByUserId(userId,
+                PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.DESC, "createdAt")));
+        return new DocumentPageResponse(enrich(userId, result.getContent()), safePage, safeSize,
+                result.getTotalElements(), result.getTotalPages());
     }
 
     public DocumentResponse get(String userId, String documentId) {
-        return DocumentResponse.fromDocument(findOwned(userId, documentId));
+        UploadedDocument doc = findOwned(userId, documentId);
+        return enrich(userId, List.of(doc)).get(0);
+    }
+
+    /** One query for all jobs of the page (indexed by documentId); newest job per document wins. */
+    private List<DocumentResponse> enrich(String userId, List<UploadedDocument> docs) {
+        if (mongoTemplate == null || docs.isEmpty()) {
+            return docs.stream().map(DocumentResponse::fromDocument).toList();
+        }
+        List<String> ids = docs.stream().map(UploadedDocument::getId).toList();
+        Query q = new Query(Criteria.where("userId").is(userId).and("documentId").in(ids))
+                .with(Sort.by(Sort.Direction.DESC, "createdAt"));
+        Map<String, ProcessingJob> latest = new HashMap<>();
+        for (ProcessingJob job : mongoTemplate.find(q, ProcessingJob.class)) {
+            latest.putIfAbsent(job.getDocumentId(), job);
+        }
+        return docs.stream().map(d -> DocumentResponse.fromDocument(d).withJob(latest.get(d.getId()))).toList();
     }
 
     public DocumentDownload download(String userId, String documentId) {
@@ -142,12 +181,40 @@ public class DocumentService {
 
     public void delete(String userId, String documentId) {
         UploadedDocument doc = findOwned(userId, documentId);
-        if (doc.getStatus() == DocumentStatus.PROCESSING) {
+        List<ProcessingJob> jobs = jobsOf(userId, doc.getId());
+        // S1: a document left at PROCESSING after its job already finished must still be deletable.
+        boolean reallyProcessing = doc.getStatus() == DocumentStatus.PROCESSING
+                && (jobs.isEmpty() || jobs.stream().anyMatch(j -> j.getStatus() == JobStatus.PROCESSING));
+        if (reallyProcessing) {
             throw new ConflictException("Document is currently being processed and cannot be deleted");
         }
         // Metadata first: a leftover file is a harmless orphan, a leftover record pointing at a missing file is not.
         documentRepository.deleteById(doc.getId());
         storageService.deleteQuietly(doc.getGridFsFileId());
+        deleteJobsAndReports(userId, jobs);
+        // D4: ledger rows (transactions) are intentionally kept; their documentId now points at a removed document.
+    }
+
+    private List<ProcessingJob> jobsOf(String userId, String documentId) {
+        if (mongoTemplate == null) {
+            return List.of();
+        }
+        return mongoTemplate.find(new Query(Criteria.where("userId").is(userId).and("documentId").is(documentId)),
+                ProcessingJob.class);
+    }
+
+    /** M13/S3: a removed document must not leave a PENDING job (it would burn attempts) or an orphan report. */
+    private void deleteJobsAndReports(String userId, List<ProcessingJob> jobs) {
+        if (mongoTemplate == null || jobs.isEmpty()) {
+            return;
+        }
+        try {
+            List<String> jobIds = jobs.stream().map(ProcessingJob::getId).toList();
+            mongoTemplate.remove(new Query(Criteria.where("userId").is(userId).and("_id").in(jobIds)), ProcessingJob.class);
+            mongoTemplate.remove(new Query(Criteria.where("userId").is(userId).and("jobId").in(jobIds)), "reports");
+        } catch (RuntimeException e) {
+            log.error("Failed to clean up jobs of a deleted document: {}", e.getMessage());
+        }
     }
 
     /** Owner-scoped lookup. Another user's document is reported as 404 so its existence is not revealed. */

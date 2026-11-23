@@ -24,6 +24,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
 
+    /** Optional (field-injected so the constructor is unchanged): used for logout / password-change revocation. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private org.springframework.data.mongodb.core.MongoTemplate mongoTemplate;
+
     public JwtAuthenticationFilter(JwtService jwtService) {
         this.jwtService = jwtService;
     }
@@ -53,7 +57,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             final String userId = jwtService.extractUserId(jwt);
 
             if (userId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                if (jwtService.isTokenValid(jwt, userId)) {
+                if (jwtService.isTokenValid(jwt, userId) && !revoked(jwt, userId)) {
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                             userId,
                             null,
@@ -70,5 +74,25 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private boolean revoked(String jwt, String userId) {
+        if (mongoTemplate == null) {
+            return false;
+        }
+        try {
+            var q = org.springframework.data.mongodb.core.query.Query.query(
+                    org.springframework.data.mongodb.core.query.Criteria.where("_id").is(userId));
+            q.fields().include("tokenVersion");
+            var user = mongoTemplate.findOne(q, in.expensetrackerapp.user.model.User.class);
+            if (user == null) {
+                return true;                                   // deleted account: token is no longer valid
+            }
+            Integer claim = jwtService.extractClaim(jwt, c -> c.get("tv", Integer.class));
+            return (claim == null ? 0 : claim) != user.getTokenVersion();
+        } catch (RuntimeException e) {
+            log.warn("Token revocation check failed: {}", e.getMessage());
+            return false;
+        }
     }
 }
