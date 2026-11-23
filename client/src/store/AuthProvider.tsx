@@ -8,6 +8,7 @@ import {
 import { AppState, Platform } from "react-native";
 import * as SecureStore from "expo-secure-store";
 import { sessionSchema, type Session } from "../services/auth";
+import { api, setApiSession } from "../services/api";
 
 const KEY = "finpulse-auth-session-v1";
 type Auth = {
@@ -28,6 +29,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [demo, setDemo] = useState(false),
     [local, setLocal] = useState(false),
     [error, setError] = useState<string | null>(null);
+  // The API client needs the token before any child effect runs, so it is set during render.
+  setApiSession(session?.accessToken ?? null, () => {
+    // 401 from any request: the token is no longer valid (expired, logged out elsewhere, user deleted).
+    if (Platform.OS !== "web") void SecureStore.deleteItemAsync(KEY);
+    setSession(null);
+    setError("Your session ended. Please sign in again.");
+  });
   useEffect(() => {
     let active = true;
     (async () => {
@@ -103,6 +111,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(value);
   }
   async function signOut() {
+    // Revoke the token on the server (best effort; never block signing out).
+    if (session)
+      await Promise.race([
+        api.post("/api/users/me/logout").catch(() => {}),
+        new Promise((resolve) => setTimeout(resolve, 3000)),
+      ]);
     if (Platform.OS !== "web") await SecureStore.deleteItemAsync(KEY);
     setSession(null);
     setDemo(false);
