@@ -17,7 +17,7 @@ import { stateSchema } from "./src/types/models";
 function Content() {
   const auth = useAuth();
   const [login, setLogin] = useState(false);
-  const { state, ready, error, blocked, recover, retry } = useApp(),
+  const { state, ready, error, blocked, recover, retry, loadError, reload } = useApp(),
     c = useTheme(),
     [confirm, setConfirm] = useState(false),
     [recoveryError, setRecoveryError] = useState<string | null>(null);
@@ -38,6 +38,25 @@ function Content() {
       >
         <ActivityIndicator color={c.green} />
       </View>
+    );
+  if (loadError)
+    return (
+      <Screen>
+        <T bold size={24}>
+          We couldn’t load your data.
+        </T>
+        <ErrorText message={loadError} />
+        <Button
+          title="Try again"
+          onPress={() => void reload().catch(() => {})}
+        />
+        <Button
+          title="Sign out"
+          variant="secondary"
+          style={{ marginTop: 12 }}
+          onPress={() => void auth.signOut()}
+        />
+      </Screen>
     );
   if (blocked)
     return (
@@ -111,7 +130,12 @@ function SessionApp() {
         ? "demo"
         : undefined;
   return (
-    <AppProvider key={scope ?? "guest"} scope={scope} demo={demo}>
+    <AppProvider
+      key={scope ?? "guest"}
+      scope={scope}
+      demo={demo}
+      remote={session?.user}
+    >
       <ThemeProvider>
         <LockProvider>
           <Content />
