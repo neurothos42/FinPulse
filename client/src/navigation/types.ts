@@ -13,6 +13,8 @@ export type RootStackParams = {
   Entity: { kind: EntityKey; id?: string };
   GoalDetail: { id: string };
   Import: undefined;
+  Documents: undefined;
+  DocumentDetail: { id: string };
   Capture: { mode: "voice" | "receipt" };
   Calculator: { kind?: "SIP" | "EMI" | "Compound" | "FD" } | undefined;
   Tools: {
