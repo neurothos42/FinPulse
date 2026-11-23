@@ -8,6 +8,7 @@ import type {
 import { stateSchema } from "../types/models";
 import { shiftMonths } from "../utils/date";
 import { roundMoney } from "../utils/format";
+import { applyRemap, type Adopt } from "../services/sync";
 
 type Upsert = {
   [K in EntityKey]: { type: "UPSERT"; key: K; value: EntityMap[K] };
@@ -21,7 +22,8 @@ export type Action =
   | { type: "REMOVE"; key: EntityKey; id: string }
   | { type: "CONTRIBUTE"; id: string; amount: number }
   | { type: "PAY_BILL"; id: string; transaction: Transaction }
-  | { type: "READ_NOTIFICATIONS"; ids: string[] };
+  | { type: "READ_NOTIFICATIONS"; ids: string[] }
+  | { type: "SYNC_RESULT"; remap: Record<string, string>; adopt: Adopt[] };
 
 export function reducer(state: AppState, action: Action): AppState {
   let next = state;
@@ -134,6 +136,10 @@ export function reducer(state: AppState, action: Action): AppState {
       };
       break;
     }
+    case "SYNC_RESULT":
+      // Server ids replace the temporary client ids after a successful save (see services/sync.ts).
+      next = applyRemap(state, action.remap, action.adopt);
+      break;
     case "READ_NOTIFICATIONS":
       next = {
         ...state,
