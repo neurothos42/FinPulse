@@ -1,5 +1,6 @@
 package in.expensetrackerapp.document.controller;
 
+import in.expensetrackerapp.document.dto.DocumentPageResponse;
 import in.expensetrackerapp.document.dto.DocumentResponse;
 import in.expensetrackerapp.document.service.DocumentDownload;
 import in.expensetrackerapp.document.service.DocumentService;
@@ -49,6 +50,15 @@ public class DocumentController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         return ResponseEntity.ok(documentService.list(authentication.getName(), page, size));
+    }
+
+    /** Same items as GET /api/documents, wrapped as {content,page,size,totalElements,totalPages}. */
+    @GetMapping("/page")
+    public ResponseEntity<DocumentPageResponse> listPage(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(documentService.listPage(authentication.getName(), page, size));
     }
 
     @GetMapping("/{documentId}")

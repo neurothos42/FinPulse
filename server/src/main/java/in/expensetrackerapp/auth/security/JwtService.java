@@ -23,7 +23,8 @@ public class JwtService {
 
     public JwtService(JwtProperties jwtProperties) {
         this.jwtProperties = jwtProperties;
-        // Fail-fast validation at startup: requires JWT_SECRET and validates minimum 256 bits
+        // Fail-fast validation at startup: requires JWT_SECRET and validates minimum
+        // 256 bits
         jwtProperties.validate();
         this.signingKey = initSigningKey(jwtProperties.getSecret());
     }
