@@ -1,0 +1,5 @@
+{
+  "_comment": "Single list of the 13 server categories (Java TransactionCategory, Python STANDARD_CATEGORIES, ML metadata.labels). Client-only labels are mapped by Java CategoryAliases (see GET /api/meta/categories).",
+  "categories": ["Food","Shopping","Travel","Transport","Bills","Entertainment","Healthcare","Education","Rent","Salary","Investment","Transfer","Other"],
+  "clientAliases": {"Groceries":"Food","Household":"Bills","Personal":"Shopping","Medical":"Healthcare","Income":"Salary"}
+}
