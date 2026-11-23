@@ -58,6 +58,24 @@ public class Transaction {
     private Instant createdAt;
     private Instant updatedAt;
 
+    // ML output written by the Python worker (null for manual rows)
+    private Double categoryConfidence;
+    private String categorySource;
+    private Double ocrConfidence;
+
+    // Additive fields for manual / imported rows (DATABASE_SCHEMA B10). All nullable.
+    private String accountId;
+    private String toAccountId;
+    private String method;
+    private String origin;
+    private String incomeSource;
+    private String notes;
+    private String billId;
+    private String billDueDate;
+    private String clientRequestId;
+    /** Client-only label (Groceries, Household, Personal, Medical, Income) when it differs from the 13-value category. */
+    private String clientCategory;
+
     public Transaction() {
     }
 
@@ -120,4 +138,43 @@ public class Transaction {
 
     public Instant getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
+
+    public Double getCategoryConfidence() { return categoryConfidence; }
+    public void setCategoryConfidence(Double categoryConfidence) { this.categoryConfidence = categoryConfidence; }
+
+    public String getCategorySource() { return categorySource; }
+    public void setCategorySource(String categorySource) { this.categorySource = categorySource; }
+
+    public Double getOcrConfidence() { return ocrConfidence; }
+    public void setOcrConfidence(Double ocrConfidence) { this.ocrConfidence = ocrConfidence; }
+
+    public String getAccountId() { return accountId; }
+    public void setAccountId(String accountId) { this.accountId = accountId; }
+
+    public String getToAccountId() { return toAccountId; }
+    public void setToAccountId(String toAccountId) { this.toAccountId = toAccountId; }
+
+    public String getMethod() { return method; }
+    public void setMethod(String method) { this.method = method; }
+
+    public String getOrigin() { return origin; }
+    public void setOrigin(String origin) { this.origin = origin; }
+
+    public String getIncomeSource() { return incomeSource; }
+    public void setIncomeSource(String incomeSource) { this.incomeSource = incomeSource; }
+
+    public String getNotes() { return notes; }
+    public void setNotes(String notes) { this.notes = notes; }
+
+    public String getBillId() { return billId; }
+    public void setBillId(String billId) { this.billId = billId; }
+
+    public String getBillDueDate() { return billDueDate; }
+    public void setBillDueDate(String billDueDate) { this.billDueDate = billDueDate; }
+
+    public String getClientRequestId() { return clientRequestId; }
+    public void setClientRequestId(String clientRequestId) { this.clientRequestId = clientRequestId; }
+
+    public String getClientCategory() { return clientCategory; }
+    public void setClientCategory(String clientCategory) { this.clientCategory = clientCategory; }
 }
