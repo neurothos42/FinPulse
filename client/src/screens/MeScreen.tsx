@@ -154,6 +154,18 @@ export function MeScreen() {
           </Pressable>
         ))}
       </Card>
+      <Section title="Statements" />
+      <Card>
+        <T bold>Bank statements & receipts</T>
+        <T size={12} muted style={{ marginVertical: 10 }}>
+          Upload a statement PDF or a receipt photo, review what we found, and add it to your records.
+        </T>
+        <Button
+          title="Open statements"
+          variant="secondary"
+          onPress={() => nav.navigate("Documents")}
+        />
+      </Card>
       <Section title="Salary-day planning" />
       <Card>
         <T bold>Salary-day auto rebalancer</T>

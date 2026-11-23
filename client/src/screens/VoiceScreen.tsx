@@ -14,18 +14,23 @@ import {
 } from "../components/ui";
 import { speech } from "../services/speech";
 import { useApp } from "../store/AppProvider";
+import { saveVoiceExpenses, type VoiceResult } from "../services/documentsApi";
+import { errorMessage } from "../services/api";
+import { inr } from "../utils/format";
 import { parseAlert } from "../utils/imports";
 import { useTheme } from "../theme/ThemeProvider";
 
 export function VoiceScreen({
   navigation,
 }: NativeStackScreenProps<RootStackParams, "Voice">) {
-  const { state } = useApp(),
+  const { state, online, reload } = useApp(),
     c = useTheme();
   const [text, setText] = useState(""),
     [listening, setListening] = useState(false),
     [busy, setBusy] = useState(false),
-    [error, setError] = useState<string | null>(null);
+    [error, setError] = useState<string | null>(null),
+    [saving, setSaving] = useState(false),
+    [result, setResult] = useState<VoiceResult | null>(null);
   const mounted = useRef(true);
   const available = !!speech?.isRecognitionAvailable();
   useEffect(() => {
@@ -105,6 +110,21 @@ export function VoiceScreen({
       }
     }
   }
+  /** Online: Gemini splits what was said into one cash expense each and the server saves them. */
+  async function saveAll() {
+    setError(null);
+    setSaving(true);
+    try {
+      const r = await saveVoiceExpenses(text.trim());
+      if (!mounted.current) return;
+      setResult(r);
+      await reload(); // the new cash transactions now show up everywhere
+    } catch (e) {
+      if (mounted.current) setError(errorMessage(e, "Could not save that."));
+    } finally {
+      if (mounted.current) setSaving(false);
+    }
+  }
   function review() {
     const row = parseAlert(text, state.accounts[0].id);
     if (!row)
@@ -175,6 +195,34 @@ export function VoiceScreen({
         editable={!listening}
       />
       <ErrorText message={error} />
+      {result ? (
+        <Card>
+          <T bold>
+            {result.transactions.length
+              ? `Added ${result.transactions.length} cash expense${result.transactions.length === 1 ? "" : "s"}`
+              : "No expenses found in that"}
+          </T>
+          {result.transactions.map((t) => (
+            <T key={t.id} size={12} muted style={{ marginTop: 4 }}>
+              {t.merchant} · {inr(t.amount)} · {t.category}
+            </T>
+          ))}
+          {result.skipped.map((s) => (
+            <T key={s.index} size={11} muted style={{ marginTop: 4 }}>
+              Skipped one item: {s.reason}
+            </T>
+          ))}
+          <Button title="Done" style={{ marginTop: 12 }} onPress={() => navigation.goBack()} />
+        </Card>
+      ) : null}
+      {online && !result ? (
+        <Button
+          title={saving ? "Adding…" : "Add expenses with AI"}
+          disabled={!text.trim() || listening || busy || saving}
+          onPress={() => void saveAll()}
+          style={{ marginBottom: 12 }}
+        />
+      ) : null}
       <Button
         title="Review transaction"
         disabled={!text.trim() || listening || busy}
