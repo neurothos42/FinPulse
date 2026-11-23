@@ -27,6 +27,12 @@ public class User {
     @LastModifiedDate
     private Instant updatedAt;
 
+    /** Tokens issued before this instant are rejected (set by logout / password change). */
+    private Instant tokensValidAfter;
+
+    /** Bumped by logout / password change; a token is valid only while its "tv" claim equals this value. */
+    private int tokenVersion;
+
     public User() {
     }
 
@@ -94,4 +100,12 @@ public class User {
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
     }
+
+    public Instant getTokensValidAfter() { return tokensValidAfter; }
+
+    public void setTokensValidAfter(Instant tokensValidAfter) { this.tokensValidAfter = tokensValidAfter; }
+
+    public int getTokenVersion() { return tokenVersion; }
+
+    public void setTokenVersion(int tokenVersion) { this.tokenVersion = tokenVersion; }
 }
