@@ -31,10 +31,29 @@ public record TransactionUpdateRequest(
         @Size(max = 2000, message = "description must be at most 2000 characters")
         String description,
 
-        Boolean needsReview) {
+        Boolean needsReview,
+
+        @Size(max = 24, message = "accountId is too long")
+        String accountId,
+
+        @Size(max = 30, message = "method is too long")
+        String method,
+
+        @Size(max = 40, message = "incomeSource is too long")
+        String incomeSource,
+
+        @Size(max = 2000, message = "notes must be at most 2000 characters")
+        String notes) {
+
+    /** Original 7-component shape; kept so existing callers keep compiling. */
+    public TransactionUpdateRequest(String date, BigDecimal amount, TransactionDirection direction, String merchant,
+                                    String category, String description, Boolean needsReview) {
+        this(date, amount, direction, merchant, category, description, needsReview, null, null, null, null);
+    }
 
     public boolean hasNoChanges() {
         return date == null && amount == null && direction == null && merchant == null
-                && category == null && description == null && needsReview == null;
+                && category == null && description == null && needsReview == null
+                && accountId == null && method == null && incomeSource == null && notes == null;
     }
 }
