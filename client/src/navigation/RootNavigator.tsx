@@ -34,6 +34,8 @@ import { ToolsScreen } from "../screens/ToolsScreen";
 import { ImportScreen } from "../screens/ImportScreen";
 import { CaptureScreen } from "../screens/CaptureScreen";
 import { ProfileScreen } from "../screens/ProfileScreen";
+import { DocumentsScreen } from "../screens/DocumentsScreen";
+import { DocumentDetailScreen } from "../screens/DocumentDetailScreen";
 const Stack = createNativeStackNavigator<RootStackParams>(),
   Tab = createBottomTabNavigator<TabParams>();
 const icons = {
@@ -202,6 +204,16 @@ export function RootNavigator() {
           name="Import"
           component={ImportScreen}
           options={{ title: "Import" }}
+        />
+        <Stack.Screen
+          name="Documents"
+          component={DocumentsScreen}
+          options={{ title: "Statements" }}
+        />
+        <Stack.Screen
+          name="DocumentDetail"
+          component={DocumentDetailScreen}
+          options={{ title: "Document" }}
         />
         <Stack.Screen
           name="Capture"
