@@ -153,6 +153,11 @@ public class GlobalExceptionHandler {
      * type mismatches...) implement org.springframework.web.ErrorResponse and carry the correct
      * status. They are mapped to that status instead of being reported as 500.
      */
+    @ExceptionHandler(ServiceUnavailableException.class)
+    public ResponseEntity<ErrorResponse> handleServiceUnavailable(ServiceUnavailableException ex, HttpServletRequest request) {
+        return build(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage(), request);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGlobalException(
             Exception ex,
