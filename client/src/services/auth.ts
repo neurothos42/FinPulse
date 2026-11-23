@@ -46,6 +46,14 @@ async function request(path: string, body: object) {
         throw new Error("Email or password is incorrect.");
       if (response.status === 409)
         throw new Error("That email is already registered. Please sign in.");
+      if (response.status === 429) {
+        const wait = Number(response.headers.get("Retry-After"));
+        throw new Error(
+          Number.isFinite(wait) && wait > 0
+            ? `Too many attempts. Try again in ${Math.ceil(wait / 60)} minute(s).`
+            : "Too many attempts. Please wait a few minutes and try again.",
+        );
+      }
       if (response.status === 400)
         throw new Error("Check your details and try again.");
       throw new Error("Sign-in is temporarily unavailable. Please try again.");
